@@ -1,0 +1,10 @@
+<template>
+    <p>{objectApiName}</p>
+    <p>{recordId}</p>
+
+    {child.length}
+
+    <template for:each={childRelationships} for:item="child">
+        <p key={child}>{child}</p>
+    </template>
+</template>
