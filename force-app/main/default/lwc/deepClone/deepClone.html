@@ -1,10 +1,23 @@
 <template>
-    <p>{objectApiName}</p>
-    <p>{recordId}</p>
 
-    {child.length}
+<lightning-card  title="Deep Clone with Related">
+        <lightning-button label="New" slot="actions"></lightning-button>
+        
+        <lightning-dual-listbox
+        id="selectOptions"
+        name="Select Options"
+        
+        source-label="Available Options"
+        selected-label="Selected Options"
+        options={childRelationships}
+        value={selections}
+    >
+    </lightning-dual-listbox>
 
-    <template for:each={childRelationships} for:item="child">
-        <p key={child}>{child}</p>
-    </template>
+
+        <p slot="footer">sObject Type: {objectApiName}</p>
+        <p slot="footer">Record Id: {recordId}</p>
+</lightning-card>
+
+
 </template>

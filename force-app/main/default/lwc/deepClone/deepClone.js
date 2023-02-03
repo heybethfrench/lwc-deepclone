@@ -7,6 +7,7 @@ export default class DeepClone extends LightningElement {
 
     @track childRelationships;
     @track error;
+    @track selections;
 
     @wire(getChildRelationships)
     getChildRelationships({error, data}) {
