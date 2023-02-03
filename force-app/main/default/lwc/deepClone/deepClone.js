@@ -1,6 +1,6 @@
 import { LightningElement, api, wire, track } from 'lwc';
 import getChildRelationships from '@salesforce/apex/SObjectMetadataMethods.getChildRelationships';
-//import cloneWithRelated from '@salesforce/apex/SObjectMetadataMethods.cloneWithRelated';
+import cloneWithRelated from '@salesforce/apex/SObjectMetadataMethods.cloneWithRelated';
 
 export default class DeepClone extends LightningElement {
     @api objectApiName;
@@ -28,11 +28,12 @@ export default class DeepClone extends LightningElement {
         console.log('handled');
         this.selections = event.detail.value;
         console.log(event.detail.value);
-        console.log(this.selections);
     }
 
-    handleClone(){
+    async handleClone(){
         console.log('cloned');
         console.log(this.selections);
+        await cloneWithRelated({recordId: this.recordId, childObjects : this.selections });
+        console.log('it ran bro');
     }
 }

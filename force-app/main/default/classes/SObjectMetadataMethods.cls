@@ -32,7 +32,7 @@ public with sharing class SObjectMetadataMethods {
         @AuraEnabled public String value {get; set;}
 
     }
-
+    @AuraEnabled
     public static void cloneWithRelated(String recordId, List<String> childObjects){
         System.debug('clone with related');
         for(String child : childObjects){
