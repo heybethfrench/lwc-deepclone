@@ -1,16 +1,17 @@
 <template>
 
 <lightning-card  title="Deep Clone with Related">
-        <lightning-button label="New" slot="actions"></lightning-button>
+        <lightning-button label="Clone" slot="actions" onclick={handleClone}></lightning-button>
         
         <lightning-dual-listbox
         id="selectOptions"
         name="Select Options"
-        
+        label="Select Related Objects to Clone"
         source-label="Available Options"
         selected-label="Selected Options"
         options={childRelationships}
         value={selections}
+        onchange={handleSelection}
     >
     </lightning-dual-listbox>
 
