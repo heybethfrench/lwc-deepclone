@@ -33,10 +33,15 @@ public with sharing class SObjectMetadataMethods {
 
     }
     @AuraEnabled
-    public static void cloneWithRelated(String recordId, List<String> childObjects){
+    public static String cloneWithRelated(String recordId, List<String> childObjects){
         System.debug('clone with related');
         for(String child : childObjects){
             System.debug(child);
         }
+
+        Account acc = [SELECT Name FROM Account WHERE Id = :recordId];
+        Account acc2 = acc.clone(false, true, false, false);
+        insert acc2;
+        return acc2.Id;
     }
 }

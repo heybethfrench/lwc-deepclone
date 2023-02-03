@@ -1,10 +1,12 @@
 import { LightningElement, api, wire, track } from 'lwc';
 import getChildRelationships from '@salesforce/apex/SObjectMetadataMethods.getChildRelationships';
 import cloneWithRelated from '@salesforce/apex/SObjectMetadataMethods.cloneWithRelated';
+import { NavigationMixin } from 'lightning/navigation';
 
-export default class DeepClone extends LightningElement {
+export default class DeepClone extends NavigationMixin(LightningElement) {
     @api objectApiName;
     @api recordId;
+    @api newRecordId;
 
     @track childRelationships;
     @track error;
@@ -33,7 +35,16 @@ export default class DeepClone extends LightningElement {
     async handleClone(){
         console.log('cloned');
         console.log(this.selections);
-        await cloneWithRelated({recordId: this.recordId, childObjects : this.selections });
+        var clonedObjectRecordId = await cloneWithRelated({recordId: this.recordId, childObjects : this.selections });
         console.log('it ran bro');
+        console.log(clonedObjectRecordId);
+        console.log('its navigate now');
+        this[NavigationMixin.Navigate]({
+            type: 'standard__recordPage',
+            attributes: {
+                recordId: clonedObjectRecordId,
+                actionName: 'view',
+            },
+        });
     }
 }
