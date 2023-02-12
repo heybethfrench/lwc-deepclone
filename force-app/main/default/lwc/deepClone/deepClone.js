@@ -2,6 +2,8 @@ import { LightningElement, api, wire, track } from 'lwc';
 import getChildRelationships from '@salesforce/apex/SObjectMetadataMethods.getChildRelationships';
 import cloneWithRelated from '@salesforce/apex/SObjectMetadataMethods.cloneWithRelated';
 import { NavigationMixin } from 'lightning/navigation';
+import { getObjectInfo } from 'lightning/uiObjectInfoApi';
+import ACCOUNT_OBJECT from '@salesforce/schema/Account';
 
 export default class DeepClone extends NavigationMixin(LightningElement) {
     @api objectApiName;
@@ -10,14 +12,35 @@ export default class DeepClone extends NavigationMixin(LightningElement) {
 
     @track childRelationships;
     @track error;
+    @track childRelationUiApi;
     
     selections = [];
+
+    @wire(getObjectInfo, { objectApiName: '$objectApiName' })
+    objectInfo({error, data}) {
+        if(data){
+            console.log('we changed how the sobject name is passed');
+            this.childRelationUiApi = data;
+            console.log('we got the object info and heres the api name');
+            console.log(JSON.stringify(data.apiName));
+            console.log('here are the childrelationships');
+            console.log(JSON.stringify(data.childRelationships));
+            console.log('heres the first relationship');
+            console.log(JSON.stringify(data.childRelationships[0]));
+            console.log('the relationships names');
+            data.childRelationships.forEach(this.debugRelationships);
+        }else if (error){
+            console.log('there\'s an error in the lwc ui api wire method');
+            console.log(error);
+        }
+    }
+
 
     @wire(getChildRelationships)
     getChildRelationships({error, data}) {
         if(data){
             this.childRelationships = data;
-            console.log(JSON.stringify(data));
+            //onsole.log(JSON.stringify(data));
             this.error = undefined;
         } else if (error){
             this.error = error;
@@ -46,5 +69,10 @@ export default class DeepClone extends NavigationMixin(LightningElement) {
                 actionName: 'view',
             },
         });
+    }
+
+    debugRelationships(item, index, arr){
+        console.log(item.relationshipName);
+        console.log(item.label);
     }
 }

@@ -1,6 +1,7 @@
 public with sharing class SObjectMetadataMethods {
     @AuraEnabled(cacheable = true)
     public static List<childRelationship> getChildRelationships(){
+        System.debug('getting the child relationships');
         Set<childRelationship> childSObjectTypes = new Set<childRelationship>();
         Map<String, String> label2value = new Map<String, String>();
         List<childRelationship> result = new List<childRelationship>();
@@ -10,11 +11,11 @@ public with sharing class SObjectMetadataMethods {
 
         for(Schema.ChildRelationship rels :sObjDescribe.getChildRelationships()){
             String label = String.valueOf(rels.getChildSObject().getDescribe().getLabelPlural());
-            String devName = String.valueOf(rels.getChildSObject());
+            String devName = String.valueOf(rels.getRelationshipName());
    
             label2value.put(label, devName);
         }
-        System.debug('from the map');
+
         for(String label: label2value.keySet()){
             childRelationship child = new childRelationship();
             child.label = label;
@@ -34,14 +35,35 @@ public with sharing class SObjectMetadataMethods {
     }
     @AuraEnabled
     public static String cloneWithRelated(String recordId, List<String> childObjects){
+       
         System.debug('clone with related');
-        for(String child : childObjects){
-            System.debug(child);
+
+        String childObjectString = '';
+
+        for(Integer i=0; i<childObjects.size();i++){
+            childObjectString = childObjectString + ', ( SELECT Id FROM ' + childObjects[i] +')';            
         }
 
-        Account acc = [SELECT Name FROM Account WHERE Id = :recordId];
-        Account acc2 = acc.clone(false, true, false, false);
-        insert acc2;
-        return acc2.Id;
+        String queryString = 'SELECT Id, Name' + childObjectString + ' FROM Account WHERE Id=\'' + recordId +'\'';
+        
+        List<sObject> result = Database.query(queryString);
+
+        //String sobjectType = Id.valueOf(recordId).getSObjectType().getDescribe().getName();
+        //System.debug(sobjectType);
+        
+        System.debug('child object string: '+ childObjectString);
+        System.debug('query string: ' + queryString);
+        System.debug('query result: ' + result);
+
+        List<SObject> objToInsert = new List<SObject>();
+
+        for(sObject obj : result){
+            SObject newObj = obj.clone(false, true, false, false);
+            objToInsert.add(newObj);
+        }
+
+        insert objToInsert;
+        
+        return String.valueOf(objToInsert[0].Id);
     }
 }
