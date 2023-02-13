@@ -3,6 +3,7 @@ import getChildRelationships from '@salesforce/apex/SObjectMetadataMethods.getCh
 import cloneWithRelated from '@salesforce/apex/SObjectMetadataMethods.cloneWithRelated';
 import { NavigationMixin } from 'lightning/navigation';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
+import SystemModstamp from '@salesforce/schema/Account.SystemModstamp';
 
 export default class DeepClone extends NavigationMixin(LightningElement) {
     @api objectApiName;
@@ -11,11 +12,12 @@ export default class DeepClone extends NavigationMixin(LightningElement) {
 
     @track childRelationships;
     @track error;
-    @track childRelationUiApi;
+    //@track childRelationUiApi;
+    selectedChildRelationships = [];
     
     selections = [];
 
-    @wire(getObjectInfo, { objectApiName: '$objectApiName' })
+    /*@wire(getObjectInfo, { objectApiName: '$objectApiName' })
     objectInfo({error, data}) {
         if(data){
             console.log('we changed how the sobject name is passed');
@@ -33,13 +35,14 @@ export default class DeepClone extends NavigationMixin(LightningElement) {
             console.log(error);
         }
     }
-
+*/
 
     @wire(getChildRelationships, { sObjectType : '$objectApiName'})
     getChildRelationships({error, data}) {
         if(data){
             this.childRelationships = data;
-            //onsole.log(JSON.stringify(data));
+            console.log(JSON.stringify(data));
+            //data.forEach(this.debugRelationships);
             this.error = undefined;
         } else if (error){
             this.error = error;
@@ -52,12 +55,28 @@ export default class DeepClone extends NavigationMixin(LightningElement) {
         console.log('handled');
         this.selections = event.detail.value;
         console.log(event.detail.value);
+
+        
+
     }
 
     async handleClone(){
         console.log('cloned');
+        console.log('here are the selections');
         console.log(this.selections);
-        var clonedObjectRecordId = await cloneWithRelated({sObjectType: this.objectApiName, recordId: this.recordId, childObjects : this.selections });
+
+        for(let i=0; i< this.childRelationships.length; i++){
+            if(this.selections.includes(this.childRelationships[i].value)){
+                console.log(this.childRelationships[i].value);
+                this.selectedChildRelationships.push(this.childRelationships[i]);
+            }
+        }
+                
+        console.log('heres the new list');
+        console.log(JSON.stringify(this.selectedChildRelationships));
+        console.log('now it passes selected relationships');
+       
+        var clonedObjectRecordId = await cloneWithRelated({sObjectType: this.objectApiName, recordId: this.recordId, childObjects : this.selectedChildRelationships });
         console.log('it ran bro');
         console.log(clonedObjectRecordId);
         console.log('its navigate now');
@@ -70,8 +89,10 @@ export default class DeepClone extends NavigationMixin(LightningElement) {
         });
     }
 
-    debugRelationships(item, index, arr){
-        console.log(item.relationshipName);
-        console.log(item.label);
+    selectChildRelationships(item){
+        if(this.selections.includes(item.value)){
+            this.selectedChildRelationships.push(item);
+        }
     }
+
 }

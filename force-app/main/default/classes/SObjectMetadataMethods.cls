@@ -5,6 +5,7 @@ public with sharing class SObjectMetadataMethods {
 
         Map<String, String> label2value = new Map<String, String>();
         Map<String, String> label2fieldname = new Map<String, String>();
+        Map<String, String> label2apiname = new Map<String, String>();
         List<childRelationship> result = new List<childRelationship>();
         sObject dynamicObj = (SObject)Type.forName(sObjectType).newInstance();
         SObjectType sObjType = dynamicObj.getSObjectType();
@@ -14,9 +15,12 @@ public with sharing class SObjectMetadataMethods {
             String label = String.valueOf(rels.getChildSObject().getDescribe().getLabelPlural());
             String devName = String.valueOf(rels.getRelationshipName());
             String fieldName = String.valueOf(rels.getField());
+            String apiName = String.valueOf(rels.getChildSObject().getDescribe().getSObjectType());
             if(label != null && devName != null && fieldName != null){
                 label2fieldname.put(label, fieldName);
                 label2value.put(label, devName);
+                label2apiname.put(label, apiName);
+                System.debug('api name: ' + apiName);
             }
 
         }
@@ -26,6 +30,7 @@ public with sharing class SObjectMetadataMethods {
             child.label = label;
             child.value = label2value.get(label);
             child.fieldName = label2fieldname.get(label);
+            child.apiName = label2apiname.get(label);
     
             result.add(child);
         }
@@ -54,37 +59,20 @@ public with sharing class SObjectMetadataMethods {
         @AuraEnabled public String label {get; set;}
         @AuraEnabled public String value {get; set;}
         @AuraEnabled public String fieldName {get; set;}
+        @AuraEnabled public String apiName {get; set;}
 
     }
     @AuraEnabled
-    public static String cloneWithRelated(String sObjectType, String recordId, List<String> childObjects){
+    public static String cloneWithRelated(String sObjectType, String recordId, List<childRelationship> childObjects){
        
         System.debug('clone with related');
+        System.debug('child relationships');
+        System.debug(childObjects);
 
-        String parentObjectFieldString = '';
-        String childObjectString = '';
+        String parentObjectFieldString = fetchsObjectFieldString(sObjectType);
+        String childObjectString = '(SELECT Id FROM Contacts)';
 
-        sObject dynamicObj = (SObject)Type.forName(sObjectType).newInstance();
-        SObjectType sObjType = dynamicObj.getSObjectType();
-        DescribeSobjectResult sObjDescribe = sObjType.getDescribe();
-
-        Map<String,Schema.SObjectField> mfields = sObjType.getDescribe().fields.getMap();
-        List<String> fieldNames = new List<String>(mfields.keySet());
-      
-        for(Integer i = 0; i < fieldNames.size(); i++){
-            if(i == 0){
-                parentObjectFieldString += String.valueOf(mfields.get(fieldNames[i]).getDescribe().getName());  
-            }else{
-                parentObjectFieldString += ', ' + String.valueOf(mfields.get(fieldNames[i]).getDescribe().getName());
-            }
-
-        }
-
-        for(Integer i=0; i<childObjects.size();i++){
-            childObjectString = childObjectString + ', ( SELECT Id FROM ' + childObjects[i] +')';            
-        }
-
-        String queryString = 'SELECT ' + parentObjectFieldString + childObjectString + ' FROM ' + sObjectType + ' WHERE Id=\'' + recordId +'\'';
+        String queryString = 'SELECT ' + parentObjectFieldString /*+ childObjectString*/ + ' FROM ' + sObjectType + ' WHERE Id=\'' + recordId +'\'';
         
         
 
@@ -103,10 +91,52 @@ public with sharing class SObjectMetadataMethods {
         for(sObject obj : result){
             SObject newObj = obj.clone(false, true, false, false);
             objToInsert.add(newObj);
+
         }
 
-        insert objToInsert;
+        String returnId = recordId;
+        try {
+            insert objToInsert;
+            returnId = String.valueOf(objToInsert[0].Id);
+        } catch (Exception e){
+            System.debug(e);
+            returnId = recordId;
+        }
         
-        return String.valueOf(objToInsert[0].Id);
+        
+        return returnId;
+    }
+
+    public static String fetchsObjectFieldString(String sObjectType){
+        System.debug('getting fields');
+        String result = '';
+
+        sObject dynamicObj = (SObject)Type.forName(sObjectType).newInstance();
+        SObjectType sObjType = dynamicObj.getSObjectType();
+        DescribeSobjectResult sObjDescribe = sObjType.getDescribe();
+
+        Map<String,Schema.SObjectField> mfields = sObjType.getDescribe().fields.getMap();
+        List<String> fieldNames = new List<String>(mfields.keySet());
+      
+        for(Integer i = 0; i < fieldNames.size(); i++){
+            if(i == 0){
+                result += String.valueOf(mfields.get(fieldNames[i]).getDescribe().getName());  
+            }else{
+                result += ', ' + String.valueOf(mfields.get(fieldNames[i]).getDescribe().getName());
+            }
+
+        }
+        return result;
+    }
+
+    //pass plural label plus api name, currently only passing plural label
+    public static String fetchChildObjectQueryString(List<String> childObjects){
+        String result = '';
+        for(Integer i=0; i<childObjects.size();i++){
+            String childObjectFields = fetchsObjectFieldString(childObjects[i]);
+            result += ', ( SELECT' + childObjectFields +'FROM ' + childObjects[i] +')';  
+            System.debug(result);          
+        }
+        return result;
     }
 }
