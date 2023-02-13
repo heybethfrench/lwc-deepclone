@@ -1,12 +1,12 @@
 public with sharing class SObjectMetadataMethods {
     @AuraEnabled(cacheable = true)
-    public static List<childRelationship> getChildRelationships(){
+    public static List<childRelationship> getChildRelationships(String sObjectType){
         System.debug('getting the child relationships');
-        Set<childRelationship> childSObjectTypes = new Set<childRelationship>();
+
         Map<String, String> label2value = new Map<String, String>();
         Map<String, String> label2fieldname = new Map<String, String>();
         List<childRelationship> result = new List<childRelationship>();
-        sObject dynamicObj = (SObject)Type.forName('Account').newInstance();
+        sObject dynamicObj = (SObject)Type.forName(sObjectType).newInstance();
         SObjectType sObjType = dynamicObj.getSObjectType();
         DescribeSobjectResult sObjDescribe = sObjType.getDescribe();
 
@@ -57,27 +57,47 @@ public with sharing class SObjectMetadataMethods {
 
     }
     @AuraEnabled
-    public static String cloneWithRelated(String recordId, List<String> childObjects){
+    public static String cloneWithRelated(String sObjectType, String recordId, List<String> childObjects){
        
         System.debug('clone with related');
 
+        String parentObjectFieldString = '';
         String childObjectString = '';
+
+        sObject dynamicObj = (SObject)Type.forName(sObjectType).newInstance();
+        SObjectType sObjType = dynamicObj.getSObjectType();
+        DescribeSobjectResult sObjDescribe = sObjType.getDescribe();
+
+        Map<String,Schema.SObjectField> mfields = sObjType.getDescribe().fields.getMap();
+        List<String> fieldNames = new List<String>(mfields.keySet());
+      
+        for(Integer i = 0; i < fieldNames.size(); i++){
+            if(i == 0){
+                parentObjectFieldString += String.valueOf(mfields.get(fieldNames[i]).getDescribe().getName());  
+            }else{
+                parentObjectFieldString += ', ' + String.valueOf(mfields.get(fieldNames[i]).getDescribe().getName());
+            }
+
+        }
 
         for(Integer i=0; i<childObjects.size();i++){
             childObjectString = childObjectString + ', ( SELECT Id FROM ' + childObjects[i] +')';            
         }
 
-        String queryString = 'SELECT Id, Name' + childObjectString + ' FROM Account WHERE Id=\'' + recordId +'\'';
+        String queryString = 'SELECT ' + parentObjectFieldString + childObjectString + ' FROM ' + sObjectType + ' WHERE Id=\'' + recordId +'\'';
         
-        List<sObject> result = Database.query(queryString);
+        
 
         //String sobjectType = Id.valueOf(recordId).getSObjectType().getDescribe().getName();
         //System.debug(sobjectType);
-        
+        System.debug('parent fields: ' + parentObjectFieldString);
         System.debug('child object string: '+ childObjectString);
         System.debug('query string: ' + queryString);
-        System.debug('query result: ' + result);
 
+
+        List<sObject> result = Database.query(queryString);
+
+        System.debug('query result: ' + result);
         List<SObject> objToInsert = new List<SObject>();
 
         for(sObject obj : result){

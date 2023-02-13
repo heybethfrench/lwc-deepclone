@@ -3,7 +3,6 @@ import getChildRelationships from '@salesforce/apex/SObjectMetadataMethods.getCh
 import cloneWithRelated from '@salesforce/apex/SObjectMetadataMethods.cloneWithRelated';
 import { NavigationMixin } from 'lightning/navigation';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
-import ACCOUNT_OBJECT from '@salesforce/schema/Account';
 
 export default class DeepClone extends NavigationMixin(LightningElement) {
     @api objectApiName;
@@ -36,7 +35,7 @@ export default class DeepClone extends NavigationMixin(LightningElement) {
     }
 
 
-    @wire(getChildRelationships)
+    @wire(getChildRelationships, { sObjectType : '$objectApiName'})
     getChildRelationships({error, data}) {
         if(data){
             this.childRelationships = data;
@@ -58,7 +57,7 @@ export default class DeepClone extends NavigationMixin(LightningElement) {
     async handleClone(){
         console.log('cloned');
         console.log(this.selections);
-        var clonedObjectRecordId = await cloneWithRelated({recordId: this.recordId, childObjects : this.selections });
+        var clonedObjectRecordId = await cloneWithRelated({sObjectType: this.objectApiName, recordId: this.recordId, childObjects : this.selections });
         console.log('it ran bro');
         console.log(clonedObjectRecordId);
         console.log('its navigate now');
