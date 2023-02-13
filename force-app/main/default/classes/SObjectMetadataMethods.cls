@@ -20,7 +20,6 @@ public with sharing class SObjectMetadataMethods {
                 label2fieldname.put(label, fieldName);
                 label2value.put(label, devName);
                 label2apiname.put(label, apiName);
-                System.debug('api name: ' + apiName);
             }
 
         }
@@ -34,23 +33,6 @@ public with sharing class SObjectMetadataMethods {
     
             result.add(child);
         }
-        
-        Integer valueCounter = 0;
-        Integer nullvalueCounter = 0;
-
-        for(childRelationship child : result){
-            System.debug('label: ' + child.label);
-            System.debug('value: ' + child.value);
-            System.debug('field name: ' + child.fieldName);
-            if(child.value == null || child.value == ''){
-                nullvalueCounter += 1;
-            } else {
-                valueCounter+= 1;
-            }
-        }
-
-        System.debug('records with a null value: ' + nullvalueCounter);
-        System.debug('records with a value: ' + valueCounter);
 
         return result;
     }
@@ -70,7 +52,7 @@ public with sharing class SObjectMetadataMethods {
         System.debug(childObjects);
 
         String parentObjectFieldString = fetchsObjectFieldString(sObjectType);
-        String childObjectString = '(SELECT Id FROM Contacts)';
+        String childObjectString = fetchChildObjectQueryString(childObjects);
 
         String queryString = 'SELECT ' + parentObjectFieldString /*+ childObjectString*/ + ' FROM ' + sObjectType + ' WHERE Id=\'' + recordId +'\'';
         
@@ -130,11 +112,16 @@ public with sharing class SObjectMetadataMethods {
     }
 
     //pass plural label plus api name, currently only passing plural label
-    public static String fetchChildObjectQueryString(List<String> childObjects){
+    public static String fetchChildObjectQueryString(List<childRelationship> childObjects){
         String result = '';
         for(Integer i=0; i<childObjects.size();i++){
-            String childObjectFields = fetchsObjectFieldString(childObjects[i]);
-            result += ', ( SELECT' + childObjectFields +'FROM ' + childObjects[i] +')';  
+            String childObjectFields = fetchsObjectFieldString(childObjects[i].apiName);
+            if(i == 0){
+                result += '( SELECT' + childObjectFields +'FROM ' + childObjects[i].value +')'; 
+            } else {
+                result += ', ( SELECT' + childObjectFields +'FROM ' + childObjects[i].value +')'; 
+            }
+             
             System.debug(result);          
         }
         return result;
