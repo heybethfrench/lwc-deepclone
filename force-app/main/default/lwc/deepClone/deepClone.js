@@ -2,6 +2,7 @@ import { LightningElement, api, wire, track } from 'lwc';
 import getChildRelationships from '@salesforce/apex/SObjectMetadataMethods.getChildRelationships';
 import cloneWithRelated from '@salesforce/apex/SObjectMetadataMethods.cloneWithRelated';
 import { NavigationMixin } from 'lightning/navigation';
+//import { showToastEvent } from 'lightning/platformShowToastEvent';
 
 export default class DeepClone extends NavigationMixin(LightningElement) {
     @api objectApiName;
@@ -36,24 +37,26 @@ export default class DeepClone extends NavigationMixin(LightningElement) {
     async handleClone(){
         console.log('cloned');
         console.log('here are the selections');
-
+        
         for(let i=0; i< this.childRelationships.length; i++){
             if(this.selections.includes(this.childRelationships[i].value)){
                 this.selectedChildRelationships.push(this.childRelationships[i]);
             }
         }
-       
-        var clonedObjectRecordId = await cloneWithRelated({sObjectType: this.objectApiName, recordId: this.recordId, childObjects : this.selectedChildRelationships });
-        console.log('it ran bro');
-        console.log(clonedObjectRecordId);
-        console.log('its navigating now');
-        this[NavigationMixin.Navigate]({
-            type: 'standard__recordPage',
-            attributes: {
-                recordId: clonedObjectRecordId,
-                actionName: 'view',
-            },
-        });
+        
+        
+            var clonedObjectRecordId = await cloneWithRelated({sObjectType: this.objectApiName, recordId: this.recordId, childObjects : this.selectedChildRelationships });
+            console.log('it ran bro');
+            console.log(clonedObjectRecordId);
+            console.log('its navigating now');
+            this[NavigationMixin.Navigate]({
+                type: 'standard__recordPage',
+                attributes: {
+                    recordId: clonedObjectRecordId,
+                    actionName: 'view',
+                },
+            });
+
     }
 
 }

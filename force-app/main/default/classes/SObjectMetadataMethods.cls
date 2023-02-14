@@ -46,7 +46,12 @@ public with sharing class SObjectMetadataMethods {
     }
     @AuraEnabled
     public static String cloneWithRelated(String sObjectType, String recordId, List<childRelationship> childObjects){
-       
+
+        //Schema.SObjectType sobjtype = Schema.getGlobalDescribe().get(sObjectType);
+        Map<Id, String> childId2fieldName = new Map<Id, String>();
+        Map<Id, SObject> childId2Record = new Map<Id, SObject>();
+        Map<String, String> sobjectName2fieldname = new Map<String, String>();
+
         System.debug('clone with related');
         System.debug('child relationships');
         System.debug(childObjects);
@@ -54,35 +59,56 @@ public with sharing class SObjectMetadataMethods {
         String parentObjectFieldString = fetchsObjectFieldString(sObjectType);
         String childObjectString = fetchChildObjectQueryString(childObjects);
 
-        String queryString = 'SELECT ' + parentObjectFieldString /*+ childObjectString*/ + ' FROM ' + sObjectType + ' WHERE Id=\'' + recordId +'\'';
-        
-        
-
-        //String sobjectType = Id.valueOf(recordId).getSObjectType().getDescribe().getName();
-        //System.debug(sobjectType);
-        System.debug('parent fields: ' + parentObjectFieldString);
-        System.debug('child object string: '+ childObjectString);
-        System.debug('query string: ' + queryString);
-
+        String queryString = 'SELECT ' + parentObjectFieldString + childObjectString + ' FROM ' + sObjectType + ' WHERE Id=\'' + recordId +'\'';
 
         List<sObject> result = Database.query(queryString);
+
+        SObject parent = result[0].clone(false, true, false, false);
+        insert parent;
 
         System.debug('query result: ' + result);
         List<SObject> objToInsert = new List<SObject>();
 
-        for(sObject obj : result){
-            SObject newObj = obj.clone(false, true, false, false);
-            objToInsert.add(newObj);
 
+        List<SObject> childRecords = new List<SObject>();
+        
+        for(childRelationship child : childObjects){
+            System.debug('child value: ' + child.value);
+            System.debug('child field: ' + child.fieldName);
+            System.debug(result[0].getSObjects(child.value));
+            childRecords.addAll(result[0].getSObjects(child.value));
+            sobjectName2fieldname.put(child.apiName, child.fieldName);
+            
+            
         }
 
-        String returnId = recordId;
+        List<SObject> children2insert = new List<SObject>();
+
+        for(SObject child : childRecords){
+            String childSobjectType = child.Id.getSObjectType().getDescribe().getName();
+            String parentFieldName = sobjectName2fieldname.get(childSobjectType);
+            
+            SObject childClone = child.clone(false, true, false, false);
+            Id oldId = (Id)childClone.put(parentFieldName, parent.Id);
+            System.debug(childClone.get(parentFieldName));
+            children2insert.add(childClone);
+        }
+
+        System.debug('parent Id ' + parent.Id);
+        String returnId = parent.Id;
         try {
-            insert objToInsert;
-            returnId = String.valueOf(objToInsert[0].Id);
+            insert children2insert;
+            
+            returnId = parent.Id;
+            System.debug('everything ran fine');
         } catch (Exception e){
             System.debug(e);
+            String errorMsg = e.getMessage();
+            System.debug(errorMsg);
+            //throw new AuraHandledException(ErrorMsg);
             returnId = recordId;
+        } finally {
+            
         }
         
         
@@ -117,9 +143,9 @@ public with sharing class SObjectMetadataMethods {
         for(Integer i=0; i<childObjects.size();i++){
             String childObjectFields = fetchsObjectFieldString(childObjects[i].apiName);
             if(i == 0){
-                result += '( SELECT' + childObjectFields +'FROM ' + childObjects[i].value +')'; 
+                result += ', ( SELECT ' + childObjectFields +' FROM ' + childObjects[i].value +')'; 
             } else {
-                result += ', ( SELECT' + childObjectFields +'FROM ' + childObjects[i].value +')'; 
+                result += ', ( SELECT ' + childObjectFields +' FROM ' + childObjects[i].value +')'; 
             }
              
             System.debug(result);          
