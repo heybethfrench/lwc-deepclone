@@ -57,7 +57,7 @@ public with sharing class SObjectMetadataMethods {
         System.debug(childObjects);
 
         String parentObjectFieldString = fetchsObjectFieldString(sObjectType);
-        String childObjectString = fetchChildObjectQueryString(childObjects);
+        String childObjectString = fetchChildObjectQueryString(childObjects, sObjectType);
 
         String queryString = 'SELECT ' + parentObjectFieldString + childObjectString + ' FROM ' + sObjectType + ' WHERE Id=\'' + recordId +'\'';
 
@@ -85,6 +85,7 @@ public with sharing class SObjectMetadataMethods {
         List<SObject> children2insert = new List<SObject>();
 
         for(SObject child : childRecords){
+            
             String childSobjectType = child.Id.getSObjectType().getDescribe().getName();
             String parentFieldName = sobjectName2fieldname.get(childSobjectType);
             
@@ -138,10 +139,24 @@ public with sharing class SObjectMetadataMethods {
     }
 
     //pass plural label plus api name, currently only passing plural label
-    public static String fetchChildObjectQueryString(List<childRelationship> childObjects){
+    public static String fetchChildObjectQueryString(List<childRelationship> childObjects, String parentSObject){
         String result = '';
         for(Integer i=0; i<childObjects.size();i++){
+            sObject dynamicObj = (SObject)Type.forName(childObjects[i].apiName).newInstance();
+
+            System.debug(parentSObject + '_' + childObjects[i].apiName);
+
+            SObjectType sObjType = dynamicObj.getSObjectType();
+            DescribeSobjectResult sObjDescribe = sObjType.getDescribe();
+
+            Deep_Clone_Configuration__mdt dcConfig = Deep_Clone_Configuration__mdt.getInstance(parentSObject + '_' + childObjects[i].apiName);
+            System.debug('deep clone configuration');
+            System.debug(dcConfig);
+            Schema.FieldSet fieldset = sObjDescribe.fieldSets.getMap().get(parentSObject);
+            System.debug('field set');
+            System.debug(fieldset);
             String childObjectFields = fetchsObjectFieldString(childObjects[i].apiName);
+
             if(i == 0){
                 result += ', ( SELECT ' + childObjectFields +' FROM ' + childObjects[i].value +')'; 
             } else {
