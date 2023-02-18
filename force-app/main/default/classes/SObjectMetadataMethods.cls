@@ -7,9 +7,8 @@ public with sharing class SObjectMetadataMethods {
         Map<String, String> label2fieldname = new Map<String, String>();
         Map<String, String> label2apiname = new Map<String, String>();
         List<childRelationship> result = new List<childRelationship>();
-        sObject dynamicObj = (SObject)Type.forName(sObjectType).newInstance();
-        SObjectType sObjType = dynamicObj.getSObjectType();
-        DescribeSobjectResult sObjDescribe = sObjType.getDescribe();
+
+        DescribeSobjectResult sObjDescribe = getDescribeSObjectResult(sObjectType);
 
         for(Schema.ChildRelationship rels :sObjDescribe.getChildRelationships()){
             String label = String.valueOf(rels.getChildSObject().getDescribe().getLabelPlural());
@@ -56,7 +55,7 @@ public with sharing class SObjectMetadataMethods {
         System.debug('child relationships');
         System.debug(childObjects);
 
-        String parentObjectFieldString = fetchsObjectFieldString(sObjectType);
+        String parentObjectFieldString = fetchsObjectFieldString(sObjectType, true);
         String childObjectString = fetchChildObjectQueryString(childObjects, sObjectType);
 
         String queryString = 'SELECT ' + parentObjectFieldString + childObjectString + ' FROM ' + sObjectType + ' WHERE Id=\'' + recordId +'\'';
@@ -116,15 +115,12 @@ public with sharing class SObjectMetadataMethods {
         return returnId;
     }
 
-    public static String fetchsObjectFieldString(String sObjectType){
+    public static String fetchsObjectFieldString(String sObjectType, Boolean isParent){
         System.debug('getting fields');
         String result = '';
 
-        sObject dynamicObj = (SObject)Type.forName(sObjectType).newInstance();
-        SObjectType sObjType = dynamicObj.getSObjectType();
-        DescribeSobjectResult sObjDescribe = sObjType.getDescribe();
-
-        Map<String,Schema.SObjectField> mfields = sObjType.getDescribe().fields.getMap();
+        DescribeSobjectResult sObjDescribe = getDescribeSObjectResult(sObjectType);
+        Map<String,Schema.SObjectField> mfields = sObjDescribe.fields.getMap();
         List<String> fieldNames = new List<String>(mfields.keySet());
       
         for(Integer i = 0; i < fieldNames.size(); i++){
@@ -155,7 +151,12 @@ public with sharing class SObjectMetadataMethods {
             Schema.FieldSet fieldset = sObjDescribe.fieldSets.getMap().get(parentSObject);
             System.debug('field set');
             System.debug(fieldset);
-            String childObjectFields = fetchsObjectFieldString(childObjects[i].apiName);
+            List<Schema.FieldSetMember> fieldSetMembers = fieldset.getFields();
+            System.debug(fieldSetMembers);
+            for(Schema.FieldSetMember field : fieldSetMembers){
+                System.debug(field.getFieldPath());
+            }
+            String childObjectFields = fetchsObjectFieldString(childObjects[i].apiName, false);
 
             if(i == 0){
                 result += ', ( SELECT ' + childObjectFields +' FROM ' + childObjects[i].value +')'; 
@@ -166,5 +167,12 @@ public with sharing class SObjectMetadataMethods {
             System.debug(result);          
         }
         return result;
+    }
+
+    public static DescribeSobjectResult getDescribeSObjectResult(String SObjectType){
+        sObject dynamicObj = (SObject)Type.forName(sObjectType).newInstance();
+        SObjectType sObjType = dynamicObj.getSObjectType();
+        DescribeSobjectResult sObjDescribe = sObjType.getDescribe();
+        return sObjDescribe;
     }
 }
