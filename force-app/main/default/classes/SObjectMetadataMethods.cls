@@ -20,7 +20,6 @@ public with sharing class SObjectMetadataMethods {
                 label2value.put(label, devName);
                 label2apiname.put(label, apiName);
             }
-
         }
 
         for(String label: label2value.keySet()){
@@ -43,17 +42,13 @@ public with sharing class SObjectMetadataMethods {
         @AuraEnabled public String apiName {get; set;}
 
     }
+
     @AuraEnabled
     public static String cloneWithRelated(String sObjectType, String recordId, List<childRelationship> childObjects){
 
-        //Schema.SObjectType sobjtype = Schema.getGlobalDescribe().get(sObjectType);
         Map<Id, String> childId2fieldName = new Map<Id, String>();
         Map<Id, SObject> childId2Record = new Map<Id, SObject>();
         Map<String, String> sobjectName2fieldname = new Map<String, String>();
-
-        System.debug('clone with related');
-        System.debug('child relationships');
-        System.debug(childObjects);
 
         String parentObjectFieldString = fetchsObjectFieldString(sObjectType, true);
         String childObjectString = fetchChildObjectQueryString(childObjects, sObjectType);
@@ -68,7 +63,6 @@ public with sharing class SObjectMetadataMethods {
         System.debug('query result: ' + result);
         List<SObject> objToInsert = new List<SObject>();
 
-
         List<SObject> childRecords = new List<SObject>();
         
         for(childRelationship child : childObjects){
@@ -77,8 +71,6 @@ public with sharing class SObjectMetadataMethods {
             System.debug(result[0].getSObjects(child.value));
             childRecords.addAll(result[0].getSObjects(child.value));
             sobjectName2fieldname.put(child.apiName, child.fieldName);
-            
-            
         }
 
         List<SObject> children2insert = new List<SObject>();
@@ -115,6 +107,7 @@ public with sharing class SObjectMetadataMethods {
         return returnId;
     }
 
+    //takes in an sObject type and wether the object is the parent or not and returns the field string for the query string
     public static String fetchsObjectFieldString(String sObjectType, Boolean isParent){
         System.debug('getting fields');
         String result = '';
@@ -134,28 +127,17 @@ public with sharing class SObjectMetadataMethods {
         return result;
     }
 
-    //pass plural label plus api name, currently only passing plural label
+    //method takes in information about the child objects and the String value of the API name for the parent sObject and returns the child object query string
     public static String fetchChildObjectQueryString(List<childRelationship> childObjects, String parentSObject){
         String result = '';
         for(Integer i=0; i<childObjects.size();i++){
-            sObject dynamicObj = (SObject)Type.forName(childObjects[i].apiName).newInstance();
-
-            System.debug(parentSObject + '_' + childObjects[i].apiName);
-
-            SObjectType sObjType = dynamicObj.getSObjectType();
-            DescribeSobjectResult sObjDescribe = sObjType.getDescribe();
+ 
+            DescribeSobjectResult sObjDescribe = getDescribeSObjectResult(childObjects[i].apiName);
 
             Deep_Clone_Configuration__mdt dcConfig = Deep_Clone_Configuration__mdt.getInstance(parentSObject + '_' + childObjects[i].apiName);
-            System.debug('deep clone configuration');
-            System.debug(dcConfig);
-            Schema.FieldSet fieldset = sObjDescribe.fieldSets.getMap().get(parentSObject);
-            System.debug('field set');
-            System.debug(fieldset);
-            List<Schema.FieldSetMember> fieldSetMembers = fieldset.getFields();
-            System.debug(fieldSetMembers);
-            for(Schema.FieldSetMember field : fieldSetMembers){
-                System.debug(field.getFieldPath());
-            }
+
+            List<Schema.FieldSetMember> fields = getConfiguredFieldSetMembers(dcConfig, sObjDescribe);
+
             String childObjectFields = fetchsObjectFieldString(childObjects[i].apiName, false);
 
             if(i == 0){
@@ -169,10 +151,33 @@ public with sharing class SObjectMetadataMethods {
         return result;
     }
 
+    //method takes in a String value of an sObject API name, and returns the related DescribeSobjectResult
     public static DescribeSobjectResult getDescribeSObjectResult(String SObjectType){
+
         sObject dynamicObj = (SObject)Type.forName(sObjectType).newInstance();
+
         SObjectType sObjType = dynamicObj.getSObjectType();
+
         DescribeSobjectResult sObjDescribe = sObjType.getDescribe();
+
         return sObjDescribe;
+    }
+
+    //method takes in a custom metadata record and a DescribeSobjectResult and returns the field set members
+    public static List<Schema.FieldSetMember> getConfiguredFieldSetMembers(Deep_Clone_Configuration__mdt dcConfig, DescribeSobjectResult sObjDescribe){
+    
+        System.debug('In the field set method');
+       
+        Schema.FieldSet fieldset = sObjDescribe.fieldSets.getMap().get(String.valueOf(dcConfig.Field_Set__c));
+
+        List<Schema.FieldSetMember> fieldSetMembers = fieldset.getFields();
+
+        System.debug('field paths');
+
+        for(Schema.FieldSetMember field : fieldSetMembers){
+            System.debug(field.getFieldPath());
+        }
+
+        return fieldset.getFields();
     }
 }
